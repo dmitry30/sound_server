@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Аудиоконференция</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background-color: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        .header {
+            background-color: #4a6fa5;
+            color: white;
+            text-align: center;
+            padding: 25px 0;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+        }
+        .controls {
+            padding: 20px;
+            text-align: center;
+        }
+        button {
+            background-color: #4caf50;
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            font-size: 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .transcript-area {
+            padding: 20px;
+            background-color: #f9f9f9;
+            border-top: 1px solid #e0e0e0;
+        }
+        #transcript {
+            width: 100%;
+            height: 300px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 12px;
+            resize: vertical;
+            font-size: 16px;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Аудиоконференция</h1>
+        </div>
+        <div class="controls">
+            <button id="startConference">Начать конференцию</button>
+        </div>
+        <div class="transcript-area">
+            <h3>Транскрипция разговора:</h3>
+            <textarea id="transcript" placeholder="Ожидание начала конференции..." readonly></textarea>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('startConference').addEventListener('click', function() {
+            // Здесь будет логика подключения к конференции
+            const transcript = document.getElementById('transcript');
+            transcript.value = 'Конференция начата. Ожидание участников...\n';
+
+            // Пример добавления текста из сервера (имитация)
+            setTimeout(() => {
+                transcript.value += 'Участник 1: Здравствуйте, всех вижу!\n';
+            }, 2000);
+
+            setTimeout(() => {
+                transcript.value += 'Участник 2: Добрый день, готов к обсуждению.\n';
+            }, 4000);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,53 @@
+from fastapi import FastAPI, Request
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+from fastapi.middleware.cors import CORSMiddleware
+import uvicorn
+
+#from app.api.endpoints import router as api_router
+
+
+def create_application() -> FastAPI:
+    """Создание и настройка FastAPI приложения"""
+
+    application = FastAPI(
+        title='settings.PROJECT_NAME',
+        description='settings.DESCRIPTION',
+        version='settings.VERSION',
+        debug=True
+    )
+
+    # Настройка CORS
+    application.add_middleware(
+        CORSMiddleware,
+        allow_origins='0.0.0.0',
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    # Подключение статических файлов и шаблонов
+    application.mount("/static", StaticFiles(directory="static"), name="static")
+
+    # Подключение API роутеров
+    #application.include_router(api_router, prefix="/api")
+
+    # Глобальные обработчики
+    @application.get("/")
+    async def root(request: Request):
+        """Главная страница с веб-интерфейсом"""
+        templates = Jinja2Templates(directory="templates")
+        return templates.TemplateResponse("index.html", {"request": request})
+
+    return application
+
+
+app = create_application()
+
+if __name__ == "__main__":
+    uvicorn.run(
+        "app.main:app",
+        host='localhost',
+        port=8081,
+        reload=True
+    )
