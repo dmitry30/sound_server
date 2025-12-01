@@ -1,10 +1,9 @@
 from pydantic_settings import BaseSettings
-from typing import Optional
 
 
 class Settings(BaseSettings):
     # Server settings
-    HOST: str = "0.0.0.0"
+    HOST: str = "localhost"
     PORT: int = 8081
     DEBUG: bool = True
 

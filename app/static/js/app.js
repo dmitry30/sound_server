@@ -1,11 +1,15 @@
 class VoiceChatApp {
     constructor() {
         this.websocket = null;
-        this.mediaRecorder = null;
         this.audioContext = null;
         this.isRecording = false;
         this.isConnected = false;
         this.audioStream = null;
+        this.audioWorkletNode = null;
+        this.isPlaying = false;
+        this.audioMethodElement = document.createElement('span');
+        this.audioMethodElement.id = 'audioMethod';
+        this.audioMethodElement.textContent = 'AudioWorklet';
 
         // DOM elements
         this.connectBtn = document.getElementById('connectBtn');
@@ -19,6 +23,31 @@ class VoiceChatApp {
         this.userIdInput = document.getElementById('userId');
 
         this.initializeEventListeners();
+    }
+
+    async initializeAudio() {
+        try {
+            // Initialize audio context for playback
+            this.audioContext = new (window.AudioContext || window.webkitAudioContext)({
+                sampleRate: 16000,
+                latencyHint: 'interactive'
+            });
+
+            // Load audio worklet module
+            await this.audioContext.audioWorklet.addModule('/static/js/audio-processor.js');
+
+            // Create gain node for volume control
+            this.gainNode = this.audioContext.createGain();
+            this.gainNode.gain.value = 0.7;
+            this.gainNode.connect(this.audioContext.destination);
+            this.audioMethodElement.textContent = 'AudioWorklet';
+
+        } catch (error) {
+            console.error('Error initializing audio:', error);
+            // Fallback to ScriptProcessorNode if AudioWorklet is not supported
+            this.useAudioWorklet = false;
+            this.audioMethodElement.textContent = 'ScriptProcessor (fallback)';
+        }
     }
 
     initializeEventListeners() {
@@ -47,6 +76,11 @@ class VoiceChatApp {
         }
 
         try {
+            // Initialize audio if not already initialized
+            if (!this.audioContext) {
+                await this.initializeAudio();
+            }
+
             // WebSocket connection
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
             const wsUrl = `${protocol}//${window.location.host}/api/ws/${roomId}`;
@@ -60,7 +94,14 @@ class VoiceChatApp {
                 document.body.classList.add('connected');
                 console.log('WebSocket connected');
 
-                // Request history after connection
+                // Send user joined message
+                this.websocket.send(JSON.stringify({
+                    type: 'user_joined',
+                    user_id: userId,
+                    room_id: roomId
+                }));
+
+                // Request history
                 this.websocket.send(JSON.stringify({
                     type: 'get_history'
                 }));
@@ -76,6 +117,15 @@ class VoiceChatApp {
                 this.connectionStatus.textContent = 'Отключено';
                 document.body.classList.remove('connected');
                 console.log('WebSocket disconnected');
+
+                // Send user left message
+                if (this.websocket) {
+                    this.websocket.send(JSON.stringify({
+                        type: 'user_left',
+                        user_id: userId,
+                        room_id: roomId
+                    }));
+                }
             };
 
             this.websocket.onerror = (error) => {
@@ -91,6 +141,16 @@ class VoiceChatApp {
 
     disconnect() {
         if (this.websocket) {
+            const userId = this.userIdInput.value.trim();
+            const roomId = this.roomIdInput.value.trim();
+
+            // Send user left message
+            this.websocket.send(JSON.stringify({
+                type: 'user_left',
+                user_id: userId,
+                room_id: roomId
+            }));
+
             this.websocket.close();
             this.websocket = null;
         }
@@ -116,27 +176,91 @@ class VoiceChatApp {
                     channelCount: 1,
                     sampleRate: 16000,
                     echoCancellation: true,
+                    noiseSuppression: true,
+                    autoGainControl: true
+                }
+            });
+
+            if (this.audioContext.state === 'suspended') {
+                await this.audioContext.resume();
+            }
+
+            // Create media stream source
+            const source = this.audioContext.createMediaStreamSource(this.audioStream);
+
+            // Create AudioWorkletNode
+            this.audioWorkletNode = new AudioWorkletNode(this.audioContext, 'audio-processor', {
+                numberOfInputs: 1,
+                numberOfOutputs: 1,
+                outputChannelCount: [1]
+            });
+
+            // Handle audio data from worklet
+            this.audioWorkletNode.port.onmessage = (event) => {
+                if (event.data.type === 'audioData' && this.isConnected && this.websocket) {
+                    const audioData = event.data.data;
+                    this.sendAudioData(audioData);
+                }
+            };
+
+            // Connect nodes
+            source.connect(this.audioWorkletNode);
+            this.audioWorkletNode.connect(this.audioContext.destination);
+
+            this.isRecording = true;
+            this.updateUI();
+            this.recordingStatus.textContent = 'Запись активна';
+            document.body.classList.add('recording');
+
+            console.log('Recording started with AudioWorklet');
+
+        } catch (error) {
+            console.error('Error starting recording:', error);
+
+            // Fallback to older API
+            if (error.name === 'NotSupportedError' || error.name === 'TypeError') {
+                console.log('AudioWorklet not supported, falling back to ScriptProcessorNode');
+                await this.startRecordingFallback();
+            } else {
+                alert('Ошибка доступа к микрофону: ' + error.message);
+            }
+        }
+    }
+
+    async startRecordingFallback() {
+        console.log('Recording started with ScriptProcessorNode (fallback)');
+        this.audioMethodElement.textContent = 'ScriptProcessor';
+        try {
+            // Fallback using ScriptProcessorNode
+            const stream = await navigator.mediaDevices.getUserMedia({
+                audio: {
+                    channelCount: 1,
+                    sampleRate: 16000,
+                    echoCancellation: true,
                     noiseSuppression: true
                 }
             });
 
-            // Initialize audio context
-            this.audioContext = new (window.AudioContext || window.webkitAudioContext)({
-                sampleRate: 16000
-            });
+            this.audioStream = stream;
 
-            const source = this.audioContext.createMediaStreamSource(this.audioStream);
+            if (!this.audioContext) {
+                this.audioContext = new (window.AudioContext || window.webkitAudioContext)({
+                    sampleRate: 16000
+                });
+            }
 
-            // Create processor for audio data
-            const bufferSize = 4096;
-            const processor = this.audioContext.createScriptProcessor(bufferSize, 1, 1);
+            if (this.audioContext.state === 'suspended') {
+                await this.audioContext.resume();
+            }
+
+            const source = this.audioContext.createMediaStreamSource(stream);
+            const processor = this.audioContext.createScriptProcessor(4096, 1, 1);
 
             processor.onaudioprocess = (event) => {
-                if (this.isRecording && this.isConnected) {
-                    // Get audio data from input buffer
+                if (this.isRecording && this.isConnected && this.websocket) {
                     const inputBuffer = event.inputBuffer;
-                    const channelData = inputBuffer.getChannelData(0); // Get first channel
-                    this.sendAudioChunk(channelData);
+                    const channelData = inputBuffer.getChannelData(0);
+                    this.sendAudioData(channelData);
                 }
             };
 
@@ -148,48 +272,30 @@ class VoiceChatApp {
             this.recordingStatus.textContent = 'Запись активна';
             document.body.classList.add('recording');
 
-            console.log('Recording started');
+            console.log('Recording started with ScriptProcessorNode (fallback)');
 
         } catch (error) {
-            console.error('Error starting recording:', error);
-            alert('Ошибка доступа к микрофону. Проверьте разрешения для микрофона.');
+            console.error('Error in fallback recording:', error);
+            alert('Ошибка доступа к микрофону');
         }
     }
 
-    stopRecording() {
-        this.isRecording = false;
-        this.updateUI();
-        this.recordingStatus.textContent = 'Запись не активна';
-        document.body.classList.remove('recording');
-
-        // Stop audio stream
-        if (this.audioStream) {
-            this.audioStream.getTracks().forEach(track => track.stop());
-            this.audioStream = null;
-        }
-
-        if (this.audioContext) {
-            this.audioContext.close().then(() => {
-                this.audioContext = null;
-            });
-        }
-
-        console.log('Recording stopped');
-    }
-
-    sendAudioChunk(audioData) {
+    sendAudioData(audioData) {
         if (!this.websocket || this.websocket.readyState !== WebSocket.OPEN) {
+            console.warn('WebSocket not ready');
             return;
         }
 
         try {
-            // Convert Float32Array to Int16Array
             const int16Data = this.floatToInt16(audioData);
-
-            // Convert to base64 for transmission
             const base64Data = this.arrayBufferToBase64(int16Data.buffer);
 
-            // Send audio chunk via WebSocket
+            console.log('Sending audio chunk:', {
+                size: base64Data.length,
+                audioSamples: audioData.length,
+                timestamp: Date.now()
+            });
+
             this.websocket.send(JSON.stringify({
                 type: 'audio_chunk',
                 data: base64Data,
@@ -198,14 +304,108 @@ class VoiceChatApp {
             }));
 
         } catch (error) {
-            console.error('Error sending audio chunk:', error);
+            console.error('Error sending audio data:', error);
+        }
+    }
+
+
+    stopRecording() {
+        if (this.audioWorkletNode) {
+            this.audioWorkletNode.port.postMessage('flush');
+            this.audioWorkletNode.disconnect();
+            this.audioWorkletNode = null;
+        }
+
+        if (this.audioStream) {
+            this.audioStream.getTracks().forEach(track => track.stop());
+            this.audioStream = null;
+        }
+
+        this.isRecording = false;
+        this.updateUI();
+        this.recordingStatus.textContent = 'Запись не активна';
+        document.body.classList.remove('recording');
+
+        console.log('Recording stopped');
+    }
+
+    playAudio(base64Data) {
+        if (!this.audioContext) {
+            console.warn('Audio context not initialized');
+            return;
+        }
+
+        if (this.audioContext.state === 'suspended') {
+            this.audioContext.resume();
+        }
+
+        try {
+            // Создаем новый источник для каждого фрагмента аудио
+            const source = this.audioContext.createBufferSource();
+
+            // Конвертируем base64 в ArrayBuffer
+            const binaryString = atob(base64Data);
+            const bytes = new Uint8Array(binaryString.length);
+
+            for (let i = 0; i < binaryString.length; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+
+            // ВАЖНО: данные приходят в формате Int16, 16kHz, моно
+            // Создаем AudioBuffer с правильными параметрами
+            const buffer = this.audioContext.createBuffer(1, bytes.length / 2, 16000);
+
+            // Конвертируем Int16 в Float32
+            const channelData = buffer.getChannelData(0);
+            const int16Array = new Int16Array(bytes.buffer);
+
+            for (let i = 0; i < int16Array.length; i++) {
+                channelData[i] = int16Array[i] / 32768.0;
+            }
+
+            source.buffer = buffer;
+            source.connect(this.audioContext.destination);
+            source.start(0);
+
+            console.log('Playing audio chunk:', int16Array.length, 'samples');
+
+            source.onended = () => {
+                console.log('Audio playback finished');
+            };
+
+        } catch (error) {
+            console.error('Error playing audio:', error);
+        }
+    }
+
+
+    handleWebSocketMessage(message) {
+        console.log('Received WebSocket message type:', message.type, 'data:', message);
+
+        switch (message.type) {
+            case 'audio_stream':
+                console.log('Playing audio stream, data length:', message.data?.length);
+                this.playAudio(message.data);
+                break;
+
+            case 'new_text':
+                console.log('New text received:', message.text, 'from:', message.user_id);
+                this.displayNewText(message);
+                break;
+
+            case 'text_history':
+                console.log('Text history received:', message.history?.length, 'items');
+                this.displayTextHistory(message.history);
+                break;
+
+            default:
+                console.log('Unknown message type:', message.type, 'full message:', message);
         }
     }
 
     floatToInt16(float32Array) {
         const int16Array = new Int16Array(float32Array.length);
         for (let i = 0; i < float32Array.length; i++) {
-            // Normalize float32 (-1 to 1) to int16 (-32768 to 32767)
             const sample = Math.max(-1, Math.min(1, float32Array[i]));
             int16Array[i] = sample < 0 ? sample * 32768 : sample * 32767;
         }
@@ -219,23 +419,6 @@ class VoiceChatApp {
             binary += String.fromCharCode(bytes[i]);
         }
         return btoa(binary);
-    }
-
-    handleWebSocketMessage(message) {
-        console.log('Received message:', message);
-
-        switch (message.type) {
-            case 'new_text':
-                this.displayNewText(message);
-                break;
-
-            case 'text_history':
-                this.displayTextHistory(message.history);
-                break;
-
-            default:
-                console.log('Unknown message type:', message.type);
-        }
     }
 
     displayNewText(message) {
@@ -306,10 +489,15 @@ class VoiceChatApp {
         // Recording buttons
         this.startRecordingBtn.disabled = !this.isConnected || this.isRecording;
         this.stopRecordingBtn.disabled = !this.isConnected || !this.isRecording;
+
+        const statusContainer = document.querySelector('.status');
+        if (statusContainer && !statusContainer.contains(this.audioMethodElement)) {
+            statusContainer.appendChild(this.audioMethodElement);
+        }
     }
 }
 
 // Initialize app when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-    new VoiceChatApp();
+    window.app = new VoiceChatApp();
 });

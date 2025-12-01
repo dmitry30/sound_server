@@ -249,3 +249,24 @@ main {
         justify-content: center;
     }
 }
+
+/* Добавьте этот CSS в существующий файл */
+.status {
+    display: flex;
+    gap: 20px;
+    margin-left: auto;
+    flex-wrap: wrap;
+}
+
+.status span {
+    padding: 8px 15px;
+    border-radius: 15px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+#audioMethod {
+    background: #9b59b6;
+    color: white;
+}
