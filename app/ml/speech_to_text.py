@@ -2,6 +2,8 @@ import numpy as np
 from typing import Optional
 import random
 
+import whisper
+
 
 class SpeechToTextModel:
     def __init__(self, model_path: str = None):
@@ -15,8 +17,8 @@ class SpeechToTextModel:
         Currently a placeholder - replace with actual model loading.
         """
         try:
-            # Placeholder for actual model loading
-            # Example: self.model = whisper.load_model("base")
+            
+            self.model = whisper.load_model("base")
             self.is_loaded = True
             print("STT model loaded (placeholder)")
         except Exception as e:
@@ -37,23 +39,28 @@ class SpeechToTextModel:
                 return None
 
             # Simulate transcription with random phrases
-            phrases = [
-                "привет как дела",
-                "сегодня хорошая погода",
-                "мне нравится этот проект",
-                "давайте обсудим новые идеи",
-                "что вы думаете об этом",
-                "я согласен с вами",
-                "может быть попробуем другой подход",
-                "спасибо за помощь",
-                "до свидания"
-            ]
+            # phrases = [
+            #     "привет как дела",
+            #     "сегодня хорошая погода",
+            #     "мне нравится этот проект",
+            #     "давайте обсудим новые идеи",
+            #     "что вы думаете об этом",
+            #     "я согласен с вами",
+            #     "может быть попробуем другой подход",
+            #     "спасибо за помощь",
+            #     "до свидания"
+            # ]
 
             # Simple "transcription" based on audio energy
-            energy = np.mean(audio_data ** 2)
-            phrase_index = min(int(energy * 100) % len(phrases), len(phrases) - 1)
+            # energy = np.mean(audio_data ** 2)
+            # phrase_index = min(int(energy * 100) % len(phrases), len(phrases) - 1)
+            try:
+                result = self.model.transcribe(audio_data, language='ru', fp16=False)
+            except Exception as e:
+                print(f"Transcription error: {e}")
+                return None
 
-            return phrases[phrase_index]
+            return result.get("text")
 
         except Exception as e:
             print(f"Transcription error: {e}")
