@@ -1,64 +1,59 @@
 import numpy as np
 from typing import Optional
 import random
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class SpeechToTextModel:
     def __init__(self, model_path: str = None):
         self.model_path = model_path
-        self.is_loaded = False
-        self._load_model()
+        self.is_loaded = True  # Всегда загружена для тестирования
+        self.counter = 0
 
-    def _load_model(self):
-        """
-        Load the speech-to-text model.
-        Currently a placeholder - replace with actual model loading.
-        """
-        try:
-            # Placeholder for actual model loading
-            # Example: self.model = whisper.load_model("base")
-            self.is_loaded = True
-            print("STT model loaded (placeholder)")
-        except Exception as e:
-            print(f"Error loading STT model: {e}")
-            self.is_loaded = False
+        # Список тестовых фраз
+        self.test_phrases = [
+            "Привет, как дела?",
+            "Сегодня хорошая погода.",
+            "Мне нравится этот проект.",
+            "Что вы думаете об этом?",
+            "Давайте обсудим идеи.",
+            "Спасибо за помощь!",
+            "До свидания.",
+            "Повторите, пожалуйста.",
+            "Я не понял вопрос.",
+            "Отличная работа!"
+        ]
 
     def transcribe(self, audio_data: np.ndarray) -> Optional[str]:
         """
-        Transcribe audio to text.
-        Currently returns placeholder text - replace with actual model inference.
+        Простая заглушка для тестирования.
+        Возвращает тестовые фразы по очереди.
         """
-        if not self.is_loaded or audio_data is None:
-            return None
-
         try:
-            # Placeholder implementation - replace with actual model inference
-            if len(audio_data) < 1000:  # Too short
+            if audio_data is None or len(audio_data) < 1000:
+                logger.info("Audio too short for transcription")
                 return None
 
-            # Simulate transcription with random phrases
-            phrases = [
-                "привет как дела",
-                "сегодня хорошая погода",
-                "мне нравится этот проект",
-                "давайте обсудим новые идеи",
-                "что вы думаете об этом",
-                "я согласен с вами",
-                "может быть попробуем другой подход",
-                "спасибо за помощь",
-                "до свидания"
-            ]
+            # Логируем информацию об аудио
+            logger.info(f"Transcribing audio: shape={audio_data.shape}, mean={np.mean(audio_data):.6f}")
 
-            # Simple "transcription" based on audio energy
-            energy = np.mean(audio_data ** 2)
-            phrase_index = min(int(energy * 100) % len(phrases), len(phrases) - 1)
+            # Простая проверка - если аудио почти тихое, возвращаем None
+            energy = np.mean(np.square(audio_data))
+            if energy < 0.001:
+                logger.info("Audio energy too low, probably silence")
+                return None
 
-            return phrases[phrase_index]
+            # Берем следующую фразу из списка
+            phrase_index = self.counter % len(self.test_phrases)
+            transcription = self.test_phrases[phrase_index]
+
+            self.counter += 1
+
+            logger.info(f"Transcription result: {transcription}")
+            return transcription
 
         except Exception as e:
-            print(f"Transcription error: {e}")
+            logger.error(f"Transcription error: {e}")
             return None
-
-    def transcribe_batch(self, audio_batch: list) -> list:
-        """Transcribe batch of audio data (placeholder)"""
-        return [self.transcribe(audio) for audio in audio_batch]
