@@ -4,7 +4,7 @@ __pycache__
 .env
 .envs
 .env.lock
-requirements.txt
+
 yarn-error.log
 node_modules
 dist
