@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Голосовой чат с субтитрами</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Голосовой чат с субтитрами</h1>
+            <div class="room-info">
+                <input type="text" id="roomId" placeholder="ID комнаты" value="default-room">
+                <input type="text" id="userId" placeholder="Ваш ID" value="user-{{ range(1, 100) | random }}">
+                <button id="connectBtn">Подключиться</button>
+                <button id="disconnectBtn" disabled>Отключиться</button>
+            </div>
+        </header>
+
+        <main>
+            <div class="controls">
+                <button id="startRecording" disabled>Начать запись</button>
+                <button id="stopRecording" disabled>Остановить запись</button>
+                <div class="status">
+                    <span id="connectionStatus">Не подключено</span>
+                    <span id="recordingStatus">Запись не активна</span>
+                </div>
+            </div>
+
+            <div class="transcript-container">
+                <h2>Транскрипция созвона</h2>
+                <div id="transcript" class="transcript">
+                    <div class="empty-state">Транскрипция появится здесь...</div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
