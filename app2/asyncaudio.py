@@ -76,10 +76,10 @@ class RealtimeAudioProcessor:
                     audio_chunk = self.accumulation_buffer[i:i+self.chunk_size]
 
                     rms = np.sqrt(np.mean(np.square(audio_chunk.astype(np.float64))))
-                    logger.info(f"{rms}")
+                    # logger.info(f"{rms}")
                     if rms > 500:
                         if self.is_silent:
-                            logger.info(f"Start speak")
+                            logger.info("Start speak")
                             self.is_silent = False
                             self.accumulation_buffer = self.accumulation_buffer[i:]
                             i = 0
@@ -87,7 +87,7 @@ class RealtimeAudioProcessor:
                     else:
                         # logger.info(f"{self.accumulation_buffer}")
                         if not self.is_silent and self.silent_count >= 10:
-                            logger.info(f"Stop speak")
+                            logger.info("Stop speak")
                             self.is_silent = True
                             data_to_process = self.accumulation_buffer[:i-self.silent_count*self.chunk_size].copy()
                             #logger.info(f"{self.accumulation_buffer[:i-self.silent_count*self.chunk_size]}")
