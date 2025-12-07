@@ -1,10 +1,13 @@
+.vscode
 .idea
 __pycache__
 .venv
 .env
 .envs
 .env.lock
+.cache/
 
+vosk_models/
 yarn-error.log
 node_modules
 dist

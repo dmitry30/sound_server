@@ -34,7 +34,7 @@ class VoiceChatApp {
             });
 
             // Load audio worklet module
-            await this.audioContext.audioWorklet.addModule('/static/js/audio-processor.js');
+            await this.audioContext.audioWorklet.addModule('./static/js/audio-processor.js');
 
             // Create gain node for volume control
             this.gainNode = this.audioContext.createGain();
