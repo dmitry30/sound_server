@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 import uvicorn
 import logging
 import json
-from app.asyncaudio import RealtimeAudioProcessor
+from app import RealtimeAudioProcessor
 
 import mimetypes
 
