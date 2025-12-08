@@ -75,8 +75,7 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str):
                 user_id = message.get("user_id", "unknown")
                 try:
                     await websocket.app.state.audio_processor.add_base64_audio(
-                        message["data"],
-                        user_id
+                        message["data"]
                     )
                 except Exception as e:
                     continue

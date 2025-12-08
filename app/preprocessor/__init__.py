@@ -24,12 +24,13 @@ class PreProcessor:
     def __init__(self):
         self.accumulation_buffer = np.array([])
         self.chunk_lock = asyncio.Lock()
-        self.silent = True
+        self.is_silent = True
         self.current_block = None
         self.current_chunk = None
-        self.chunk_size = 0.1 * 16000
+        self.chunk_size = int(0.1 * 16000)
+        self.silent_count = 0
 
-    def __call__(self, audio: np.ndarray):
+    async def __call__(self, audio: np.ndarray):
         async with self.chunk_lock:
             i = self.accumulation_buffer.size // self.chunk_size * self.chunk_size
             self.accumulation_buffer = np.append(self.accumulation_buffer, audio)

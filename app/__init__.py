@@ -1,10 +1,12 @@
 import asyncio
+import traceback
+
 import numpy as np
 import logging
 import base64
-from preprocessor import PreProcessor
-from processor import Processor
-from postprocessor import PostProcessor
+from app.preprocessor import PreProcessor
+from app.processor import Processor
+from app.postprocessor import PostProcessor
 
 logger = logging.getLogger(__name__)
 
@@ -21,11 +23,12 @@ class RealtimeAudioProcessor:
             audio_bytes = base64.b64decode(base64_data)
             await self.add_audio_data(audio_bytes)
         except Exception as e:
+            traceback.print_exc()
             logger.error(f"Error decoding base64 audio: {e}")
             raise
 
     async def add_audio_data(self, audio_bytes: bytes) -> None:
-        for block in self.pre_processor(np.frombuffer(audio_bytes, dtype=np.int16)):
+        async for block in self.pre_processor(np.frombuffer(audio_bytes, dtype=np.int16)):
             asyncio.create_task(self._process_accumulated_data(block))
 
     async def _process_accumulated_data(self, block) -> None:
