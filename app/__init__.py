@@ -6,7 +6,7 @@ import logging
 import base64
 from app.preprocessor import PreProcessor
 from app.processor import Processor
-from app.postprocessor import PostProcessor
+# from app.postprocessor import PostProcessor
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +16,7 @@ class RealtimeAudioProcessor:
         self.buffer_lock = asyncio.Lock()
         self.processor = Processor()
         self.pre_processor = PreProcessor()
-        self.post_processor = PostProcessor()
+        # self.post_processor = PostProcessor()
 
     async def add_base64_audio(self, base64_data: str) -> None:
         try:
@@ -32,6 +32,6 @@ class RealtimeAudioProcessor:
             asyncio.create_task(self._process_accumulated_data(block))
 
     async def _process_accumulated_data(self, block) -> None:
-        if await self.processing_callback(audio_data=block):
-            await self.post_processing_callback(audsio_data=block)
+        if await self.processor.process_audio(audio_data=block):
+            #await self.post_processing_callback(audsio_data=block)
             print(block.text) # тут должна быть broadcast
