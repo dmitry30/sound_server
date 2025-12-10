@@ -9,7 +9,8 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ChunkData:
     audio: np.ndarray = field(default_factory=lambda: np.array([], dtype=np.int16))
-    text: str = ""
+    text: str = None
+    full_text: str = ""
     pre_chunk: ChunkData = None
     post_chunk: ChunkData = None
 
@@ -39,7 +40,7 @@ class PreProcessor:
                 audio_chunk = self.accumulation_buffer[i:i + self.chunk_size]
 
                 rms = np.sqrt(np.mean(np.square(audio_chunk.astype(np.float64))))
-                logger.info(f"{rms}")
+                # logger.info(f"{rms}")
                 if rms > 500:
                     if self.is_silent:
                         logger.info(f"Start speak")
@@ -55,7 +56,7 @@ class PreProcessor:
                     if not self.is_silent and self.silent_count >= 10:
                         logger.info(f"Stop speak")
                         self.is_silent = True
-                        self.current_chunk.audio = self.accumulation_buffer[:i - self.silent_count * self.chunk_size].copy()
+                        self.current_chunk.audio = self.accumulation_buffer[:i].copy()
                         #self.current_chunk = ChunkData(pre_chunk=self.current_chunk)
                         #self.current_chunk.pre_chunk.post_chunk = self.current_chunk
                         yield self.current_block
@@ -70,7 +71,7 @@ class PreProcessor:
                 self.accumulation_buffer = self.accumulation_buffer[i:]
             else:
                 if self.silent_count == 0:
-                    self.current_chunk.audio = self.accumulation_buffer[:i - self.silent_count * self.chunk_size].copy()
+                    self.current_chunk.audio = self.accumulation_buffer[:i].copy()
                     self.current_chunk = ChunkData(pre_chunk=self.current_chunk)
                     self.current_chunk.pre_chunk.post_chunk = self.current_chunk
                     yield self.current_block

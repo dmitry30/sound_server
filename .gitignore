@@ -10,6 +10,7 @@ __pycache__
 vosk_models/
 yarn-error.log
 node_modules
+*.ipynb
 dist
 *.pyc
 *.pyo

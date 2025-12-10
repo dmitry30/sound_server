@@ -163,7 +163,7 @@ class SpeechToTextModel:
                 text = result.get("text", "")
 
                 if text:
-                    return text
+                    return text, True
             else:
                 # Частичный результат
                 partial = json.loads(self.recognizer.PartialResult())
@@ -172,9 +172,9 @@ class SpeechToTextModel:
                     # Возвращаем частичный результат или None
 
                     do_reset and self.reset()
-                    return partial_text
+                    return partial_text, do_reset
 
-            return None
+            return "", False
 
         except Exception as e:
             logger.error(f"Ошибка транскрипции: {e}")
@@ -226,21 +226,39 @@ class Processor:
 
     async def process_audio(self, audio_data: BlockData) -> Optional[bool]:
         async with audio_data.lock:
-            logger.info("processing_audio")
+            # logger.info("processing_audio")
             curr_chunk: ChunkData = audio_data.next_chunk
 
-            predicted_text = self.speech_to_text.transcribe(
-                curr_chunk.audio.astype(np.float32) / 32768.8
+            predicted_text, is_full = self.speech_to_text.transcribe(
+                curr_chunk.audio.astype(np.float32) / 32768.8, do_reset=curr_chunk.post_chunk is None
             )
-            logger.info(f"♪♪♪ {predicted_text}")
-            if predicted_text is not None:
-                if (prev:=curr_chunk.pre_chunk) is not None:
-                    if isinstance(prev.text, str):
-                        logger.info("ОБРЕЗАНО")
-                        logger.info(f"♀♀♀prev:{prev.text}")
-                        predicted_text = predicted_text.replace(prev.text, "").strip()
-            curr_chunk.text = predicted_text
-            logger.info(f"▲▲▲{curr_chunk.text}")
+            # logger.info(f"♪♪♪ {predicted_text}")
+            # if predicted_text is not None:
+            #     if (prev:=curr_chunk.pre_chunk) is not None:
+            #         if isinstance(prev.text, str):
+            #             logger.info("ОБРЕЗАНО")
+            #             logger.info(f"♀♀♀prev:{prev.text}")
+            #             predicted_text = predicted_text.replace(prev.text, "").strip()
+            curr_chunk.full_text = predicted_text
+            if is_full:
+                curr_text = predicted_text
+                chunk = curr_chunk
+                while chunk.pre_chunk and not chunk.pre_chunk.text:
+                    prev_text = chunk.pre_chunk.full_text
+                    prev_text_sp = prev_text.split(" ")
+                    curr_text_sp = curr_text.split(" ")
+            
+                    i = 0
+                    while i < min(len(prev_text_sp), len(curr_text_sp)) and prev_text_sp[i] == curr_text_sp[i]:
+                        i += 1
+
+                    curr_text = ' '.join(curr_text_sp[:i])
+                    chunk.text = ' ' + ' '.join(curr_text_sp[i:])
+
+                    chunk = chunk.pre_chunk
+                chunk.text = curr_text
+            
+            # logger.info(f"▲▲▲{curr_chunk.text}")
             if curr_chunk.post_chunk is None:
                 return True
             else:
