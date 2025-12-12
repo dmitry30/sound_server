@@ -1,12 +1,13 @@
 import asyncio
+import base64
+import logging
 import traceback
 
 import numpy as np
-import logging
-import base64
+
+from app.postprocessor import PostProcessing
 from app.preprocessor import BlockData, PreProcessor
 from app.processor import Processor
-# from app.postprocessor import PostProcessor
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +17,7 @@ class RealtimeAudioProcessor:
         self.buffer_lock = asyncio.Lock()
         self.processor = Processor()
         self.pre_processor = PreProcessor()
-        # self.post_processor = PostProcessor()
+        self.post_processor = PostProcessing()
 
     async def add_base64_audio(self, base64_data: str) -> None:
         try:
@@ -35,15 +36,23 @@ class RealtimeAudioProcessor:
         if await self.processor.process_audio(audio_data=block):
             
             curr_chunk = block.first_chunk
-            text = ""
+            text_list = []
+            audio_list = []
+            text = ''
             while curr_chunk:
                 # logger.info(f"{curr_chunk.text} | ")
-                text += curr_chunk.text + '|'
+                if curr_chunk.text:
+                    text_list.append(curr_chunk.text)
+                    audio_list.append(curr_chunk.audio)
+                    text += curr_chunk.text + ' '
                 curr_chunk = curr_chunk.post_chunk
             logger.info(f"{text}")
-            print(block.text) 
+            print(block.text)
 
             # TODO: АМИР это тебе
-            # structured_text_data = await self.post_processing_callback(audio_data=block)
-
+            structured_text_data, sentences, emotions = await self.post_processor.process(text, text_list, audio_list)
+            logger.info(f"Результат: {structured_text_data}")
+            logger.info("Эмоции по предложениям:")
+            for emotion in emotions:
+                logger.info(emotion)
             # тут должна быть broadcast
