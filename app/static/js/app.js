@@ -175,9 +175,9 @@ class VoiceChatApp {
                 audio: {
                     channelCount: 1,
                     sampleRate: 16000,
-                    echoCancellation: true,
-                    noiseSuppression: true,
-                    autoGainControl: true
+                    echoCancellation: false,
+                    noiseSuppression: false,
+                    autoGainControl: false
                 }
             });
 
@@ -220,63 +220,9 @@ class VoiceChatApp {
             // Fallback to older API
             if (error.name === 'NotSupportedError' || error.name === 'TypeError') {
                 console.log('AudioWorklet not supported, falling back to ScriptProcessorNode');
-                await this.startRecordingFallback();
             } else {
                 alert('Ошибка доступа к микрофону: ' + error.message);
             }
-        }
-    }
-
-    async startRecordingFallback() {
-        console.log('Recording started with ScriptProcessorNode (fallback)');
-        this.audioMethodElement.textContent = 'ScriptProcessor';
-        try {
-            // Fallback using ScriptProcessorNode
-            const stream = await navigator.mediaDevices.getUserMedia({
-                audio: {
-                    channelCount: 1,
-                    sampleRate: 16000,
-                    echoCancellation: true,
-                    noiseSuppression: true
-                }
-            });
-
-            this.audioStream = stream;
-
-            if (!this.audioContext) {
-                this.audioContext = new (window.AudioContext || window.webkitAudioContext)({
-                    sampleRate: 16000
-                });
-            }
-
-            if (this.audioContext.state === 'suspended') {
-                await this.audioContext.resume();
-            }
-
-            const source = this.audioContext.createMediaStreamSource(stream);
-            const processor = this.audioContext.createScriptProcessor(4096, 1, 1);
-
-            processor.onaudioprocess = (event) => {
-                if (this.isRecording && this.isConnected && this.websocket) {
-                    const inputBuffer = event.inputBuffer;
-                    const channelData = inputBuffer.getChannelData(0);
-                    this.sendAudioData(channelData);
-                }
-            };
-
-            source.connect(processor);
-            processor.connect(this.audioContext.destination);
-
-            this.isRecording = true;
-            this.updateUI();
-            this.recordingStatus.textContent = 'Запись активна';
-            document.body.classList.add('recording');
-
-            console.log('Recording started with ScriptProcessorNode (fallback)');
-
-        } catch (error) {
-            console.error('Error in fallback recording:', error);
-            alert('Ошибка доступа к микрофону');
         }
     }
 
@@ -289,7 +235,7 @@ class VoiceChatApp {
         try {
             const int16Data = this.floatToInt16(audioData);
             const base64Data = this.arrayBufferToBase64(int16Data.buffer);
-
+            //this.playAudio(base64Data)
             console.log('Sending audio chunk:', {
                 size: base64Data.length,
                 audioSamples: audioData.length,
