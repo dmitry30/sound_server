@@ -1,6 +1,7 @@
 import asyncio
 import base64
 import logging
+import time
 import traceback
 
 import numpy as np
@@ -19,20 +20,20 @@ class RealtimeAudioProcessor:
         self.pre_processor = PreProcessor()
         self.post_processor = PostProcessing()
 
-    async def add_base64_audio(self, base64_data: str) -> None:
+    async def add_base64_audio(self, base64_data: str, user_id: str, room_id: str, connection_manager) -> None:
         try:
             audio_bytes = base64.b64decode(base64_data)
-            await self.add_audio_data(audio_bytes)
+            await self.add_audio_data(audio_bytes, user_id, room_id, connection_manager)
         except Exception as e:
             traceback.print_exc()
             logger.error(f"Error decoding base64 audio: {e}")
             raise
 
-    async def add_audio_data(self, audio_bytes: bytes) -> None:
+    async def add_audio_data(self, audio_bytes: bytes, user_id: str, room_id: str, connection_manager) -> None:
         async for block in self.pre_processor(np.frombuffer(audio_bytes, dtype=np.int16)):
-            asyncio.create_task(self._process_accumulated_data(block))
+            asyncio.create_task(self._process_accumulated_data(block, user_id, room_id, connection_manager))
 
-    async def _process_accumulated_data(self, block: BlockData) -> None:
+    async def _process_accumulated_data(self, block: BlockData, user_id: str, room_id: str, connection_manager) -> None:
         if await self.processor.process_audio(audio_data=block):
             
             curr_chunk = block.first_chunk
@@ -53,6 +54,20 @@ class RealtimeAudioProcessor:
             structured_text_data, sentences, emotions = await self.post_processor.process(text, text_list, audio_list)
             logger.info(f"Результат: {structured_text_data}")
             logger.info("Эмоции по предложениям:")
+            # logger.info(f"предложения: {sentences}")
+            emote = []
             for emotion in emotions:
                 logger.info(emotion)
+                emote.append(emotion[0].get('label'))
             # тут должна быть broadcast
+
+            if structured_text_data:
+                message = {
+                    "type": "new_text",
+                    "text": structured_text_data.strip(),
+                    "emote": emote,
+                    "user_id": user_id,
+                    "timestamp": time.time() * 1000
+                }
+
+                await connection_manager.broadcast_to_room(room_id, message)

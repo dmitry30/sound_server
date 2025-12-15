@@ -371,6 +371,7 @@ class VoiceChatApp {
         this.addMessageToTranscript({
             user_id: message.user_id,
             text: message.text,
+            emote: message.emote,
             timestamp: message.timestamp
         });
     }
@@ -404,17 +405,94 @@ class VoiceChatApp {
 
         const timestamp = new Date(message.timestamp).toLocaleTimeString();
 
-        messageElement.innerHTML = `
-            <div class="message-header">
-                <span class="user-id">${this.escapeHtml(message.user_id)}</span>
-                <span class="timestamp">${timestamp}</span>
-            </div>
-            <div class="message-text">${this.escapeHtml(message.text)}</div>
-        `;
+        // messageElement.innerHTML = `
+        //     <div class="message-header">
+        //         <span class="user-id">${this.escapeHtml(message.user_id)}</span>
+        //         <span class="timestamp">${timestamp}</span>
+        //     </div>
+        //     <div class="message-text">${this.escapeHtml(message.text)}</div>
+        // `;
 
+        // this.transcriptContainer.appendChild(messageElement);
+        // this.scrollToBottom();
+         // Получаем первую эмоцию
+        let firstEmote = '';
+        if (message.emote && Array.isArray(message.emote) && message.emote.length > 0) {
+            firstEmote = message.emote[0].toLowerCase();
+        }
+
+        // Создаем элементы отдельно для лучшего контроля
+        const headerElement = document.createElement('div');
+        headerElement.className = 'message-header';
+        
+        const userIdSpan = document.createElement('span');
+        userIdSpan.className = 'user-id';
+        userIdSpan.textContent = message.user_id;
+        
+        const timestampSpan = document.createElement('span');
+        timestampSpan.className = 'timestamp';
+        timestampSpan.textContent = timestamp;
+        
+        headerElement.appendChild(userIdSpan);
+        headerElement.appendChild(timestampSpan);
+        
+        // Добавляем индикатор эмоции если есть
+        if (firstEmote) {
+            const emoteSpan = document.createElement('span');
+            emoteSpan.className = 'emote-indicator';
+            emoteSpan.textContent = message.emote[0];
+            headerElement.appendChild(emoteSpan);
+        }
+        
+        const textElement = document.createElement('div');
+        textElement.className = 'message-text';
+        textElement.textContent = message.text;
+        
+        // Применяем стиль в зависимости от эмоции
+        if (firstEmote) {
+            this.applyEmoteStyle(textElement, firstEmote);
+        }
+        
+        messageElement.appendChild(headerElement);
+        messageElement.appendChild(textElement);
+        
         this.transcriptContainer.appendChild(messageElement);
         this.scrollToBottom();
     }
+
+    applyEmoteStyle(element, emote) {
+    // Словарь стилей для каждой эмоции
+    const emoteStyles = {
+        'hap': {
+            color: '#2e7d32',
+            backgroundColor: '#e8f5e9',
+            borderLeft: '4px solid #2e7d32'
+        },
+        'sad': {
+            color: '#1565c0',
+            backgroundColor: '#e3f2fd',
+            borderLeft: '4px solid #1565c0'
+        },
+        'ang': {
+            color: '#c62828',
+            backgroundColor: '#ffebee',
+            borderLeft: '4px solid #c62828'
+        },
+        'neu': {
+            color: '#616161',
+            backgroundColor: '#f5f5f5',
+            borderLeft: '4px solid #616161'
+        }
+    };
+    
+    const style = emoteStyles[emote];
+    if (style) {
+        Object.assign(element.style, style);
+        element.style.padding = '8px';
+        element.style.borderRadius = '4px';
+        element.style.marginTop = '4px';
+    }
+}
 
     scrollToBottom() {
         this.transcriptContainer.scrollTop = this.transcriptContainer.scrollHeight;
@@ -447,3 +525,17 @@ class VoiceChatApp {
 document.addEventListener('DOMContentLoaded', () => {
     window.app = new VoiceChatApp();
 });
+
+// showSystemMessage(text) {
+//     const messageElement = document.createElement('div');
+//     messageElement.className = 'message system-message';
+//     messageElement.innerHTML = `
+//         <div class="message-header">
+//             <span class="system-label">Системное сообщение</span>
+//         </div>
+//         <div class="message-text">${this.escapeHtml(text)}</div>
+//     `;
+    
+//     this.transcriptContainer.appendChild(messageElement);
+//     this.scrollToBottom();
+// }

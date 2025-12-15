@@ -270,3 +270,42 @@ main {
     background: #9b59b6;
     color: white;
 }
+
+.system-message {
+    background-color: #f0f0f0;
+    border-left: 4px solid #666;
+}
+
+.system-message .message-header {
+    color: #666;
+}
+
+.system-label {
+    font-style: italic;
+    font-size: 0.9em;
+}
+
+/* Стили для эмоций */
+.emote-happy {
+    color: #2e7d32; /* Зеленый для радости */
+    border-left: 4px solid #2e7d32;
+    padding-left: 8px;
+}
+
+.emote-sad {
+    color: #1565c0; /* Синий для грусти */
+    border-left: 4px solid #1565c0;
+    padding-left: 8px;
+}
+
+.emote-angry {
+    color: #c62828; /* Красный для злости */
+    border-left: 4px solid #c62828;
+    padding-left: 8px;
+}
+
+.emote-neutral {
+    color: #616161; /* Серый для нейтрального */
+    border-left: 4px solid #616161;
+    padding-left: 8px;
+}
